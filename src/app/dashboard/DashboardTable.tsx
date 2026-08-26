@@ -1,6 +1,7 @@
 'use client';
 
 import { Fragment, useMemo, useState } from 'react';
+import { QUESTIONS } from '@/lib/questions';
 
 export interface AssessmentRow {
   id: string;
@@ -82,8 +83,10 @@ export function DashboardTable({ rows }: { rows: AssessmentRow[] }) {
                     <div className="mb-2">
                       <p className="font-semibold">Answers</p>
                       <ul className="list-disc pl-5">
-                        {Object.entries(row.answers).map(([questionId, answer]) => (
-                          <li key={questionId}>{questionId}: {answer}</li>
+                        {QUESTIONS.map((question, index) => (
+                          <li key={question.id}>
+                            {index + 1}. {question.text} — <span className="font-medium">{row.answers[question.id] ?? '—'}</span>
+                          </li>
                         ))}
                       </ul>
                     </div>

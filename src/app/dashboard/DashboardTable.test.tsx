@@ -29,7 +29,7 @@ const rows: AssessmentRow[] = [
     phone: '+2348000000000',
     score: 30,
     risk_level: 'High',
-    answers: {},
+    answers: { q1: 'No', q2: 'Yes', q3: 'In Progress' },
     critical_gaps: ['Missing resident QPPV.'],
     general_gaps: []
   }
@@ -53,5 +53,13 @@ describe('DashboardTable', () => {
     render(<DashboardTable rows={rows} />);
     fireEvent.click(screen.getByText('Beta Biotech'));
     expect(screen.getByText('Missing resident QPPV.')).toBeInTheDocument();
+  });
+
+  it('expands a row to show full question text with each answer', () => {
+    render(<DashboardTable rows={rows} />);
+    fireEvent.click(screen.getByText('Beta Biotech'));
+    expect(screen.getByText(/permanently resident, qualified QPPV/)).toHaveTextContent('No');
+    expect(screen.getByText(/formally designated deputy\/backup QPPV/)).toHaveTextContent('Yes');
+    expect(screen.getByText(/named Local Safety Officer/)).toHaveTextContent('In Progress');
   });
 });
