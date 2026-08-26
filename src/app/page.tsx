@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { QUESTIONS, type QuestionId } from '@/lib/questions';
 import type { Answer, Answers, ScoreResult } from '@/lib/scoring';
+import { gtagEvent } from '@/lib/analytics';
 
 const ANSWER_OPTIONS: Answer[] = ['Yes', 'No', 'In Progress'];
 
@@ -37,8 +38,16 @@ export default function Home() {
   const [result, setResult] = useState<ScoreResult | null>(null);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [proposalStatus, setProposalStatus] = useState<ProposalStatus>('idle');
+  const startedRef = useRef(false);
+
+  function markStarted() {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    gtagEvent('assessment_start');
+  }
 
   function setAnswer(id: QuestionId, value: Answer) {
+    markStarted();
     setAnswers((prev) => ({ ...prev, [id]: value }));
   }
 
@@ -62,6 +71,10 @@ export default function Home() {
       setResult(data.result as ScoreResult);
       setSubmissionId(typeof data.id === 'string' ? data.id : null);
       setStatus('success');
+      gtagEvent('assessment_complete', {
+        score: data.result.score,
+        risk_level: data.result.riskLevel
+      });
       window.scrollTo({ top: 0 });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
@@ -85,6 +98,7 @@ export default function Home() {
         throw new Error('Request failed');
       }
       setProposalStatus('done');
+      gtagEvent('proposal_request', { score: result?.score, risk_level: result?.riskLevel });
     } catch {
       setProposalStatus('error');
     }
@@ -269,7 +283,7 @@ export default function Home() {
                   id="companyName"
                   required
                   value={companyName}
-                  onChange={(event) => setCompanyName(event.target.value)}
+                  onChange={(event) => { markStarted(); setCompanyName(event.target.value); }}
                   className="mt-1.5 block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/25"
                 />
               </div>
@@ -279,7 +293,7 @@ export default function Home() {
                   id="contactName"
                   required
                   value={contactName}
-                  onChange={(event) => setContactName(event.target.value)}
+                  onChange={(event) => { markStarted(); setContactName(event.target.value); }}
                   className="mt-1.5 block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/25"
                 />
               </div>
@@ -290,7 +304,7 @@ export default function Home() {
                   type="email"
                   required
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event) => { markStarted(); setEmail(event.target.value); }}
                   className="mt-1.5 block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/25"
                 />
               </div>
@@ -300,7 +314,7 @@ export default function Home() {
                   id="phone"
                   type="tel"
                   value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
+                  onChange={(event) => { markStarted(); setPhone(event.target.value); }}
                   className="mt-1.5 block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/25"
                 />
               </div>
