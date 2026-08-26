@@ -12,6 +12,9 @@ const RISK_STYLES = {
   High: 'bg-red-100 text-red-700 ring-red-600/20'
 } as const;
 
+const CONTACT_MAILTO =
+  'mailto:info@mednovalife.com?subject=PV%20Support%20Inquiry&body=Hello%20MedNova%20team%2C%0A%0AI%20would%20like%20to%20speak%20with%20you%20about%20your%20pharmacovigilance%20services.';
+
 function initialAnswers(): Answers {
   const answers = {} as Answers;
   for (const question of QUESTIONS) {
@@ -21,6 +24,7 @@ function initialAnswers(): Answers {
 }
 
 type SubmitStatus = 'idle' | 'submitting' | 'success' | 'error';
+type ProposalStatus = 'idle' | 'sending' | 'done' | 'error';
 
 export default function Home() {
   const [answers, setAnswers] = useState<Answers>(initialAnswers);
@@ -31,6 +35,8 @@ export default function Home() {
   const [status, setStatus] = useState<SubmitStatus>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [result, setResult] = useState<ScoreResult | null>(null);
+  const [submissionId, setSubmissionId] = useState<string | null>(null);
+  const [proposalStatus, setProposalStatus] = useState<ProposalStatus>('idle');
 
   function setAnswer(id: QuestionId, value: Answer) {
     setAnswers((prev) => ({ ...prev, [id]: value }));
@@ -54,6 +60,7 @@ export default function Home() {
       }
 
       setResult(data.result as ScoreResult);
+      setSubmissionId(typeof data.id === 'string' ? data.id : null);
       setStatus('success');
       window.scrollTo({ top: 0 });
     } catch (error) {
@@ -62,16 +69,54 @@ export default function Home() {
     }
   }
 
+  async function handleRequestProposal() {
+    setProposalStatus('sending');
+    if (!submissionId) {
+      setProposalStatus('error');
+      return;
+    }
+    try {
+      const response = await fetch('/api/request-proposal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: submissionId })
+      });
+      if (!response.ok) {
+        throw new Error('Request failed');
+      }
+      setProposalStatus('done');
+    } catch {
+      setProposalStatus('error');
+    }
+  }
+
+  function resetForm() {
+    setAnswers(initialAnswers());
+    setCompanyName('');
+    setContactName('');
+    setEmail('');
+    setPhone('');
+    setStatus('idle');
+    setErrorMessage('');
+    setResult(null);
+    setSubmissionId(null);
+    setProposalStatus('idle');
+    window.scrollTo({ top: 0 });
+  }
+
   if (status === 'success' && result) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-brand to-[#062d6e]">
-        <header className="border-b border-white/10 bg-white/5 backdrop-blur">
+      <div className="min-h-screen bg-gray-50">
+        <header className="sticky top-0 z-10 border-b border-gray-100 bg-white/80 backdrop-blur">
           <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-6">
             <img src="/logo.png" alt="MedNova Lifesciences logo" width={132} height={47} className="h-9 w-auto" />
+            <a href={CONTACT_MAILTO} className="text-sm font-medium text-gray-500 transition hover:text-brand">
+              Contact us
+            </a>
           </div>
         </header>
         <main className="mx-auto max-w-2xl px-6 py-12">
-          <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-xl sm:p-10">
+          <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-lg sm:p-10">
             <p className="text-center text-sm font-medium uppercase tracking-widest text-gray-400">
               Your Compliance Score
             </p>
@@ -121,24 +166,62 @@ export default function Home() {
               </section>
             )}
 
-            <div className="mt-10 overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50 to-white ring-1 ring-blue-100">
-              <div className="p-6 sm:p-8">
-                <h2 className="text-lg font-bold text-gray-900">🚀 Close Your Compliance Gaps with MedNova Lifesciences</h2>
-                <p className="mt-2 text-sm leading-relaxed text-gray-600">
-                  MedNova provides fully outsourced, NAFDAC-compliant resident QPPV services, Local Safety
-                  Officers (LSOs), local literature monitoring, and turn-key inspection-readiness support.
-                </p>
-                <a
-                  className="mt-5 inline-flex items-center gap-2 rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:brightness-110"
-                  href="mailto:info@mednovalife.com?subject=NAFDAC%20Ready%20Proposal%20Request"
-                >
-                  Request a QPPV Retainer Proposal →
-                </a>
-              </div>
+            <div className="mt-10 rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50 to-white p-6 ring-1 ring-blue-100 sm:p-8">
+              <h2 className="text-lg font-bold text-gray-900">🚀 Close Your Compliance Gaps with MedNova Lifesciences</h2>
+              <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                MedNova provides fully outsourced, NAFDAC-compliant resident QPPV services, Local Safety
+                Officers (LSOs), local literature monitoring, and turn-key inspection-readiness support.
+              </p>
+
+              {proposalStatus === 'done' ? (
+                <div className="mt-5 flex items-start gap-3 rounded-xl bg-emerald-50 px-5 py-4 ring-1 ring-emerald-200">
+                  <span className="text-xl leading-none">✅</span>
+                  <div>
+                    <p className="text-sm font-bold text-emerald-800">Request received!</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-emerald-700">
+                      Thank you — our team will reach out to <span className="font-semibold">{email}</span> shortly
+                      with your QPPV retainer proposal.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-5">
+                  <button
+                    onClick={handleRequestProposal}
+                    disabled={proposalStatus === 'sending'}
+                    className="inline-flex items-center gap-2 rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:brightness-110 disabled:opacity-60"
+                  >
+                    {proposalStatus === 'sending' ? 'Sending request…' : 'Request a QPPV Retainer Proposal →'}
+                  </button>
+                  {proposalStatus === 'error' && (
+                    <p className="mt-2 text-xs text-red-600">
+                      We couldn&apos;t record your request automatically — please email us directly instead.
+                    </p>
+                  )}
+                  <p className="mt-3 text-xs text-gray-400">
+                    Prefer email?{' '}
+                    <a
+                      className="font-medium text-brand underline"
+                      href="mailto:info@mednovalife.com?subject=NAFDAC%20Ready%20Proposal%20Request"
+                    >
+                      Request a QPPV Retainer Proposal by email
+                    </a>
+                  </p>
+                </div>
+              )}
             </div>
           </div>
+
+          <div className="mt-8 text-center">
+            <button
+              onClick={resetForm}
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-600 shadow-sm transition hover:border-brand hover:text-brand"
+            >
+              ↺ Submit Another Response
+            </button>
+          </div>
         </main>
-        <footer className="pb-10 text-center text-xs text-blue-200/70">
+        <footer className="pb-10 text-center text-xs text-gray-400">
           © {new Date().getFullYear()} MedNova Lifesciences · Pharmacovigilance done right.
         </footer>
       </div>
@@ -150,7 +233,7 @@ export default function Home() {
       <header className="sticky top-0 z-10 border-b border-gray-100 bg-white/80 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
           <img src="/logo.png" alt="MedNova Lifesciences logo" width={132} height={47} className="h-9 w-auto" />
-          <a href="mailto:info@mednovalife.com" className="text-sm font-medium text-gray-500 transition hover:text-brand">
+          <a href={CONTACT_MAILTO} className="text-sm font-medium text-gray-500 transition hover:text-brand">
             Contact us
           </a>
         </div>
@@ -175,10 +258,10 @@ export default function Home() {
         </div>
       </section>
 
-      <main className="mx-auto -mt-8 max-w-3xl px-6 pb-16">
+      <main className="relative z-10 mx-auto -mt-8 max-w-3xl px-6 pb-16">
         <form onSubmit={handleSubmit} className="space-y-8">
-          <fieldset className="space-y-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg sm:p-8">
-            <legend className="px-1 text-sm font-semibold text-gray-700">Your details</legend>
+          <div className="space-y-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg sm:p-8">
+            <h2 className="text-sm font-semibold text-gray-700">Your details</h2>
             <div className="grid gap-5 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700" htmlFor="companyName">Company Name</label>
@@ -222,7 +305,7 @@ export default function Home() {
                 />
               </div>
             </div>
-          </fieldset>
+          </div>
 
           <div className="space-y-4">
             {QUESTIONS.map((question, index) => (

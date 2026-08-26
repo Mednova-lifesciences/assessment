@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { insertMock, fromMock, sendAssessmentNotificationMock } = vi.hoisted(() => {
+const { insertMock, singleMock, fromMock, sendAssessmentNotificationMock } = vi.hoisted(() => {
   return {
-    insertMock: vi.fn(() => Promise.resolve({ error: null })),
+    insertMock: vi.fn(),
+    singleMock: vi.fn(() => Promise.resolve({ data: { id: 'row-1' }, error: null })),
     fromMock: vi.fn(),
     sendAssessmentNotificationMock: vi.fn(() => Promise.resolve(undefined))
   };
@@ -17,6 +18,7 @@ vi.mock('@/lib/email', () => ({
 }));
 
 fromMock.mockReturnValue({ insert: insertMock });
+insertMock.mockReturnValue({ select: () => ({ single: singleMock }) });
 
 import { POST } from './route';
 import { QUESTIONS } from '@/lib/questions';
@@ -38,7 +40,7 @@ function makeRequest(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  insertMock.mockResolvedValue({ error: null });
+  singleMock.mockResolvedValue({ data: { id: 'row-1' }, error: null });
   sendAssessmentNotificationMock.mockResolvedValue(undefined);
 });
 
@@ -69,6 +71,7 @@ describe('POST /api/submit-assessment', () => {
 
     expect(response.status).toBe(200);
     expect(data.result.score).toBe(100);
+    expect(data.id).toBe('row-1');
     expect(fromMock).toHaveBeenCalledWith('nafdac_assessments');
     expect(insertMock).toHaveBeenCalledWith(
       expect.objectContaining({ company_name: 'Acme Pharma', score: 100, risk_level: 'Low' })

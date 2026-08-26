@@ -65,17 +65,21 @@ export async function POST(request: Request) {
   const result = scoreAssessment(normalizedAnswers);
 
   const supabase = createServiceRoleSupabaseClient();
-  const { error: insertError } = await supabase.from('nafdac_assessments').insert({
-    company_name: companyName,
-    contact_name: contactName,
-    email,
-    phone: phoneValue,
-    score: result.score,
-    risk_level: result.riskLevel,
-    answers: normalizedAnswers,
-    critical_gaps: result.criticalGaps,
-    general_gaps: result.generalGaps
-  });
+  const { data: insertedRow, error: insertError } = await supabase
+    .from('nafdac_assessments')
+    .insert({
+      company_name: companyName,
+      contact_name: contactName,
+      email,
+      phone: phoneValue,
+      score: result.score,
+      risk_level: result.riskLevel,
+      answers: normalizedAnswers,
+      critical_gaps: result.criticalGaps,
+      general_gaps: result.generalGaps
+    })
+    .select('id')
+    .single();
 
   if (insertError) {
     console.error('[submit-assessment] Failed to insert assessment:', insertError.message);
@@ -101,5 +105,5 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ result });
+  return NextResponse.json({ result, id: insertedRow?.id ?? null });
 }

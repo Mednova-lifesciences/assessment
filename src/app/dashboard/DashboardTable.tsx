@@ -15,9 +15,11 @@ export interface AssessmentRow {
   answers: Record<string, string>;
   critical_gaps: string[];
   general_gaps: string[];
+  proposal_requested?: boolean;
 }
 
 type RiskFilter = 'All' | 'Low' | 'Moderate' | 'High';
+type ProposalFilter = 'All' | 'Requested' | 'Not requested';
 
 const PAGE_SIZE = 10;
 
@@ -39,6 +41,7 @@ function StatCard({ label, value, accent }: { label: string; value: string; acce
 export function DashboardTable({ rows }: { rows: AssessmentRow[] }) {
   const [search, setSearch] = useState('');
   const [riskFilter, setRiskFilter] = useState<RiskFilter>('All');
+  const [proposalFilter, setProposalFilter] = useState<ProposalFilter>('All');
   const [sortAscending, setSortAscending] = useState(false);
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -48,7 +51,8 @@ export function DashboardTable({ rows }: { rows: AssessmentRow[] }) {
       total: rows.length,
       avgScore: rows.length ? Math.round(rows.reduce((sum, row) => sum + row.score, 0) / rows.length) : 0,
       high: rows.filter((row) => row.risk_level === 'High').length,
-      low: rows.filter((row) => row.risk_level === 'Low').length
+      low: rows.filter((row) => row.risk_level === 'Low').length,
+      proposals: rows.filter((row) => row.proposal_requested).length
     }),
     [rows]
   );
@@ -59,18 +63,23 @@ export function DashboardTable({ rows }: { rows: AssessmentRow[] }) {
     if (riskFilter !== 'All') {
       filtered = filtered.filter((row) => row.risk_level === riskFilter);
     }
+    if (proposalFilter !== 'All') {
+      filtered = filtered.filter((row) =>
+        proposalFilter === 'Requested' ? Boolean(row.proposal_requested) : !row.proposal_requested
+      );
+    }
     if (query) {
       filtered = filtered.filter((row) =>
         [row.company_name, row.contact_name, row.email].some((field) => field.toLowerCase().includes(query))
       );
     }
     return [...filtered].sort((a, b) => (sortAscending ? a.score - b.score : b.score - a.score));
-  }, [rows, search, riskFilter, sortAscending]);
+  }, [rows, search, riskFilter, proposalFilter, sortAscending]);
 
   useEffect(() => {
     setPage(1);
     setExpandedId(null);
-  }, [search, riskFilter, sortAscending]);
+  }, [search, riskFilter, proposalFilter, sortAscending]);
 
   const totalPages = Math.max(1, Math.ceil(visibleRows.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -80,11 +89,12 @@ export function DashboardTable({ rows }: { rows: AssessmentRow[] }) {
 
   return (
     <div className="mt-6 space-y-6">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
         <StatCard label="Companies" value={String(stats.total)} accent="text-brand" />
         <StatCard label="Average Score" value={`${stats.avgScore}%`} accent="text-gray-900" />
         <StatCard label="High Risk" value={String(stats.high)} accent="text-red-600" />
         <StatCard label="Low Risk" value={String(stats.low)} accent="text-emerald-600" />
+        <StatCard label="Proposals" value={String(stats.proposals)} accent="text-amber-600" />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -113,6 +123,19 @@ export function DashboardTable({ rows }: { rows: AssessmentRow[] }) {
             <option value="High">High</option>
           </select>
         </div>
+        <div>
+          <label className="sr-only" htmlFor="proposalFilter">Filter by proposal</label>
+          <select
+            id="proposalFilter"
+            value={proposalFilter}
+            onChange={(event) => setProposalFilter(event.target.value as ProposalFilter)}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/25"
+          >
+            <option value="All">All proposals</option>
+            <option value="Requested">Proposal requested</option>
+            <option value="Not requested">No proposal request</option>
+          </select>
+        </div>
         <button
           onClick={() => setSortAscending((value) => !value)}
           className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-600 transition hover:border-brand hover:text-brand"
@@ -129,6 +152,7 @@ export function DashboardTable({ rows }: { rows: AssessmentRow[] }) {
               <th className="px-5 py-3 font-semibold text-gray-500">Contact</th>
               <th className="px-5 py-3 font-semibold text-gray-500">Score</th>
               <th className="px-5 py-3 font-semibold text-gray-500">Risk</th>
+              <th className="px-5 py-3 font-semibold text-gray-500">Proposal</th>
               <th className="px-5 py-3 font-semibold text-gray-500">Submitted</th>
             </tr>
           </thead>
@@ -151,11 +175,20 @@ export function DashboardTable({ rows }: { rows: AssessmentRow[] }) {
                       {row.risk_level}
                     </span>
                   </td>
+                  <td className="px-5 py-3.5">
+                    {row.proposal_requested ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-amber-900 ring-1 ring-amber-400">
+                        ★ Requested
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-300">—</span>
+                    )}
+                  </td>
                   <td className="px-5 py-3.5 text-gray-500">{new Date(row.created_at).toLocaleString()}</td>
                 </tr>
                 {expandedId === row.id && (
                   <tr className="border-b border-gray-100 bg-gray-50">
-                    <td colSpan={5} className="px-8 py-4">
+                    <td colSpan={6} className="px-8 py-4">
                       <div className="mb-3">
                         <p className="font-semibold text-gray-900">Answers</p>
                         <ul className="mt-1.5 list-disc space-y-1 pl-5 text-gray-700">
@@ -192,7 +225,7 @@ export function DashboardTable({ rows }: { rows: AssessmentRow[] }) {
             ))}
             {pagedRows.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-12 text-center text-gray-400">No submissions match your filters.</td>
+                <td colSpan={6} className="py-12 text-center text-gray-400">No submissions match your filters.</td>
               </tr>
             )}
           </tbody>
