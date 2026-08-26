@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { afterEach, describe, it, expect } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { DashboardTable, type AssessmentRow } from './DashboardTable';
+
+afterEach(cleanup);
 
 const rows: AssessmentRow[] = [
   {
@@ -41,20 +42,16 @@ describe('DashboardTable', () => {
     expect(screen.getByText('Beta Biotech')).toBeInTheDocument();
   });
 
-  it('filters by risk level', async () => {
-    const user = userEvent.setup();
+  it('filters by risk level', () => {
     render(<DashboardTable rows={rows} />);
-    await user.selectOptions(screen.getByLabelText('Filter by risk'), 'High');
-    await waitFor(() => {
-      expect(screen.queryByText('Acme Pharma')).not.toBeInTheDocument();
-      expect(screen.getByText('Beta Biotech')).toBeInTheDocument();
-    });
+    fireEvent.change(screen.getByLabelText('Filter by risk'), { target: { value: 'High' } });
+    expect(screen.queryByText('Acme Pharma')).not.toBeInTheDocument();
+    expect(screen.getByText('Beta Biotech')).toBeInTheDocument();
   });
 
-  it('expands a row to show its gaps on click', async () => {
-    const user = userEvent.setup();
+  it('expands a row to show its gaps on click', () => {
     render(<DashboardTable rows={rows} />);
-    await user.click(screen.getAllByText('Beta Biotech')[0]);
+    fireEvent.click(screen.getByText('Beta Biotech'));
     expect(screen.getByText('Missing resident QPPV.')).toBeInTheDocument();
   });
 });
