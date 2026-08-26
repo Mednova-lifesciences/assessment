@@ -40,8 +40,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: '/og-image.png',
-        width: 815,
-        height: 306,
+        width: 1200,
+        height: 630,
         alt: `${SITE_NAME} — NAFDAC PV Readiness Assessment`
       }
     ]
