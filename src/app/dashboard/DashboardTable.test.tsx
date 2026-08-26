@@ -62,4 +62,35 @@ describe('DashboardTable', () => {
     expect(screen.getByText(/formally designated deputy\/backup QPPV/)).toHaveTextContent('Yes');
     expect(screen.getByText(/named Local Safety Officer/)).toHaveTextContent('In Progress');
   });
+
+  it('shows summary stat cards', () => {
+    render(<DashboardTable rows={rows} />);
+    expect(screen.getByText('Companies')).toBeInTheDocument();
+    expect(screen.getByText('Average Score')).toBeInTheDocument();
+    expect(screen.getByText('60%')).toBeInTheDocument();
+    expect(screen.getAllByText('High Risk').length).toBeGreaterThan(0);
+  });
+
+  it('searches by company name', () => {
+    render(<DashboardTable rows={rows} />);
+    fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'Beta' } });
+    expect(screen.queryByText('Acme Pharma')).not.toBeInTheDocument();
+    expect(screen.getByText('Beta Biotech')).toBeInTheDocument();
+  });
+
+  it('paginates submissions 10 per page', () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({
+      ...rows[0],
+      id: String(i + 1),
+      company_name: `Company ${i + 1}`,
+      score: 50
+    }));
+    render(<DashboardTable rows={many} />);
+    expect(screen.getByText('Company 1')).toBeInTheDocument();
+    expect(screen.queryByText('Company 11')).not.toBeInTheDocument();
+    expect(screen.getByText('Page 1 of 2')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
+    expect(screen.getByText('Company 11')).toBeInTheDocument();
+    expect(screen.getByText('Company 12')).toBeInTheDocument();
+  });
 });
