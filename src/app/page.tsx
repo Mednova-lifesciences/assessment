@@ -107,7 +107,14 @@ export default function Home() {
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
-      <h1 className="text-3xl font-bold text-brand">MedNova Lifesciences</h1>
+      <img
+        src="/logo.png"
+        alt="MedNova Lifesciences logo"
+        width={132}
+        height={47}
+        className="h-12 w-auto"
+      />
+      <h1 className="mt-4 text-3xl font-bold text-brand">MedNova Lifesciences</h1>
       <p className="mt-1 text-lg text-gray-600">
         Interactive NAFDAC QPPV &amp; PV Compliance Readiness Assessment
       </p>
