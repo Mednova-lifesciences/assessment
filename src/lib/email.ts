@@ -12,6 +12,15 @@ export interface AssessmentNotificationInput {
   generalGaps: string[];
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 function getResendClient(): Resend {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -24,16 +33,16 @@ function buildNotificationHtml(input: AssessmentNotificationInput): string {
   const gapsHtml = (title: string, gaps: string[]) =>
     gaps.length === 0
       ? ''
-      : `<h3>${title}</h3><ul>${gaps.map((gap) => `<li>${gap}</li>`).join('')}</ul>`;
+      : `<h3>${escapeHtml(title)}</h3><ul>${gaps.map((gap) => `<li>${escapeHtml(gap)}</li>`).join('')}</ul>`;
 
   return `
     <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
       <h1 style="color:#0F52BA;">New NAFDAC Readiness Assessment Submission</h1>
       <table cellpadding="6">
-        <tr><td><strong>Company</strong></td><td>${input.companyName}</td></tr>
-        <tr><td><strong>Contact</strong></td><td>${input.contactName}</td></tr>
-        <tr><td><strong>Email</strong></td><td>${input.email}</td></tr>
-        <tr><td><strong>Phone</strong></td><td>${input.phone ?? 'Not provided'}</td></tr>
+        <tr><td><strong>Company</strong></td><td>${escapeHtml(input.companyName)}</td></tr>
+        <tr><td><strong>Contact</strong></td><td>${escapeHtml(input.contactName)}</td></tr>
+        <tr><td><strong>Email</strong></td><td>${escapeHtml(input.email)}</td></tr>
+        <tr><td><strong>Phone</strong></td><td>${escapeHtml(input.phone ?? 'Not provided')}</td></tr>
         <tr><td><strong>Score</strong></td><td>${input.score}%</td></tr>
         <tr><td><strong>Risk Level</strong></td><td>${input.riskLevel}</td></tr>
       </table>

@@ -49,4 +49,25 @@ describe('sendAssessmentNotification', () => {
     delete process.env.RESEND_API_KEY;
     await expect(sendAssessmentNotification(baseInput)).rejects.toThrow('RESEND_API_KEY');
   });
+
+  it('escapes HTML in user input fields to prevent injection', async () => {
+    const maliciousInput = {
+      ...baseInput,
+      companyName: '<script>alert("xss")</script>',
+      contactName: 'Jane<img src=x onerror="alert(1)">',
+      email: 'test@example.com<script>',
+      phone: '<a href="javascript:void(0)">Click me</a>'
+    };
+    await sendAssessmentNotification(maliciousInput);
+
+    const call = sendMock.mock.calls[0][0];
+    // Verify raw unescaped HTML tags are not present
+    expect(call.html).not.toContain('<script>');
+    expect(call.html).not.toContain('<img ');
+    expect(call.html).not.toContain('<a ');
+    // Verify escaped forms are present - these prevent XSS
+    expect(call.html).toContain('&lt;script&gt;');
+    expect(call.html).toContain('&lt;img');
+    expect(call.html).toContain('&lt;a href');
+  });
 });
