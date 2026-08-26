@@ -79,6 +79,14 @@ export function DashboardTable({ rows }: { rows: AssessmentRow[] }) {
               {expandedId === row.id && (
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <td colSpan={5} className="px-4 py-3">
+                    <div className="mb-2">
+                      <p className="font-semibold">Answers</p>
+                      <ul className="list-disc pl-5">
+                        {Object.entries(row.answers).map(([questionId, answer]) => (
+                          <li key={questionId}>{questionId}: {answer}</li>
+                        ))}
+                      </ul>
+                    </div>
                     {row.critical_gaps.length > 0 && (
                       <div className="mb-2">
                         <p className="font-semibold">Critical gaps</p>

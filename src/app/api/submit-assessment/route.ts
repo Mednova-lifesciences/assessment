@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { scoreAssessment, isValidAnswers } from '@/lib/scoring';
+import { scoreAssessment, isValidAnswers, type Answers } from '@/lib/scoring';
 import { createServiceRoleSupabaseClient } from '@/lib/supabase/server';
 import { sendAssessmentNotification } from '@/lib/email';
+import { QUESTIONS } from '@/lib/questions';
 
 interface SubmitAssessmentBody {
   companyName?: unknown;
@@ -10,6 +11,9 @@ interface SubmitAssessmentBody {
   phone?: unknown;
   answers?: unknown;
 }
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_FIELD_LENGTH = 200;
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
@@ -32,12 +36,33 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!EMAIL_PATTERN.test(email)) {
+    return NextResponse.json({ error: 'A valid email address is required.' }, { status: 400 });
+  }
+
+  const phoneValue = isNonEmptyString(phone) ? phone : null;
+
+  if (
+    companyName.length > MAX_FIELD_LENGTH ||
+    contactName.length > MAX_FIELD_LENGTH ||
+    email.length > MAX_FIELD_LENGTH ||
+    (phoneValue !== null && phoneValue.length > MAX_FIELD_LENGTH)
+  ) {
+    return NextResponse.json(
+      { error: 'Company name, contact name, email, and phone must be 200 characters or fewer.' },
+      { status: 400 }
+    );
+  }
+
   if (!isValidAnswers(answers)) {
     return NextResponse.json({ error: 'All 10 questions must be answered.' }, { status: 400 });
   }
 
-  const result = scoreAssessment(answers);
-  const phoneValue = isNonEmptyString(phone) ? phone : null;
+  const normalizedAnswers = Object.fromEntries(
+    QUESTIONS.map((q) => [q.id, answers[q.id]])
+  ) as Answers;
+
+  const result = scoreAssessment(normalizedAnswers);
 
   const supabase = createServiceRoleSupabaseClient();
   const { error: insertError } = await supabase.from('nafdac_assessments').insert({
@@ -47,7 +72,7 @@ export async function POST(request: Request) {
     phone: phoneValue,
     score: result.score,
     risk_level: result.riskLevel,
-    answers,
+    answers: normalizedAnswers,
     critical_gaps: result.criticalGaps,
     general_gaps: result.generalGaps
   });

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const sendMock = vi.fn();
 
 vi.mock('resend', () => ({
-  Resend: vi.fn(function() {
+  Resend: vi.fn(function (this: { emails: { send: typeof sendMock } }) {
     this.emails = { send: sendMock };
   })
 }));
